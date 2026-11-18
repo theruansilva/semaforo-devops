@@ -33,3 +33,13 @@ echo "== DELETE (cria um cruzamento temporário e exclui; o id=$ID fica para o S
 TMP=$(j -X POST "$API/cruzamentos" -d '{"nome":"Temporário","municipio":"Porto Alegre","uf":"RS","limiteAguaCm":20}' | sed -E 's/^\{"id":([0-9]+).*/\1/')
 j -X DELETE "$API/cruzamentos/$TMP" -o /dev/null -w "HTTP %{http_code}"
 j "$API/cruzamentos/$TMP" -o /dev/null -w "GET após DELETE: HTTP %{http_code}"
+
+echo "== CRUD ALERTA (tabela relacionada: ALERTA.cruzamento_id -> CRUZAMENTO.id)"
+ALERTA=$(j -X POST "$API/alertas" -d "{\"titulo\":\"Alagamento na via\",\"descricao\":\"Defesa Civil: nível crítico\",\"severidade\":\"ALTA\",\"municipio\":\"São Paulo\",\"uf\":\"SP\",\"cruzamentoId\":$ID}")
+echo "$ALERTA"
+AID=$(echo "$ALERTA" | sed -E 's/^\{"id":([0-9]+).*/\1/')
+j "$API/alertas/$AID"
+j -X PUT "$API/alertas/$AID" -d "{\"titulo\":\"Alagamento na via (atualizado)\",\"descricao\":\"Nível em queda\",\"severidade\":\"MODERADA\",\"municipio\":\"São Paulo\",\"uf\":\"SP\",\"cruzamentoId\":$ID}"
+j "$API/cruzamentos/$ID/modo"
+j -X DELETE "$API/alertas/$AID" -o /dev/null -w "HTTP %{http_code}"
+j "$API/alertas/$AID" -o /dev/null -w "GET após DELETE: HTTP %{http_code}"
