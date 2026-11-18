@@ -6,10 +6,10 @@
 set -euo pipefail
 
 RG="rg-semaforo-566719"
-LOC="northcentralus"
+LOC="${LOC:-northcentralus}"
 VM="vm-semaforo-566719"
 USER="azureuser"
-SIZE="Standard_B2als_v2"   # 2 vCPU / 4 GB: Oracle Free (~2 GB) + API (512 MB)
+SIZE="${SIZE:-Standard_B2als_v2}"   # 2 vCPU / 4 GB: Oracle Free (~2 GB) + API (512 MB)
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 az account show -o none 2>/dev/null || { echo "Execute 'az login' primeiro."; exit 1; }

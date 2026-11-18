@@ -41,5 +41,8 @@ AID=$(echo "$ALERTA" | sed -E 's/^\{"id":([0-9]+).*/\1/')
 j "$API/alertas/$AID"
 j -X PUT "$API/alertas/$AID" -d "{\"titulo\":\"Alagamento na via (atualizado)\",\"descricao\":\"Nível em queda\",\"severidade\":\"MODERADA\",\"municipio\":\"São Paulo\",\"uf\":\"SP\",\"cruzamentoId\":$ID}"
 j "$API/cruzamentos/$ID/modo"
-j -X DELETE "$API/alertas/$AID" -o /dev/null -w "HTTP %{http_code}"
-j "$API/alertas/$AID" -o /dev/null -w "GET após DELETE: HTTP %{http_code}"
+
+echo "== DELETE alerta (cria um alerta temporário e exclui; o id=$AID fica para o SELECT)"
+TMPA=$(j -X POST "$API/alertas" -d "{\"titulo\":\"Temporário\",\"severidade\":\"BAIXA\",\"municipio\":\"São Paulo\",\"uf\":\"SP\",\"cruzamentoId\":$ID}" | sed -E 's/^\{"id":([0-9]+).*/\1/')
+j -X DELETE "$API/alertas/$TMPA" -o /dev/null -w "HTTP %{http_code}"
+j "$API/alertas/$TMPA" -o /dev/null -w "GET após DELETE: HTTP %{http_code}"

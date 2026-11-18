@@ -14,34 +14,11 @@ Esta entrega roda a **API Java (Spring Boot 3.5 / Java 21)** e o **Oracle Databa
 
 ## Arquitetura macro
 
-```mermaid
-flowchart LR
-  subgraph Borda["Cruzamento (borda)"]
-    UNO["Arduino UNO<br/>HC-SR04 + LEDs"] -- serial --> GW["Gateway Python<br/>contagem YOLO"]
-  end
-  APP["App Flutter<br/>(cidadão)"]
-  DEV["Professor / Operador<br/>curl · Swagger"]
-  CEM["CEMADEN<br/>alertas"]
+![Arquitetura macro: VM Azure com containers semaforo-api e semaforo-db](docs/arquitetura.png)
 
-  subgraph Azure["Microsoft Azure · rg-semaforo-566719"]
-    NSG["NSG<br/>porta 80 e 22"]
-    subgraph VM["VM Ubuntu 22.04 · Standard_B2als_v2"]
-      subgraph Docker["Docker Compose · rede semaforo"]
-        API["semaforo-api<br/>Spring Boot · usuário app<br/>8080 → 80"]
-        DB[("semaforo-db<br/>Oracle 23ai Free<br/>1521 · FREEPDB1")]
-        VOL[["volume<br/>semaforo-oradata"]]
-      end
-    end
-  end
+Fonte editável: [`docs/arquitetura.drawio`](docs/arquitetura.drawio) (draw.io) · vetor: [`docs/arquitetura.svg`](docs/arquitetura.svg).
 
-  GW -- "HTTP POST leituras / GET modo" --> NSG
-  APP -- HTTP --> NSG
-  DEV -- HTTP --> NSG
-  NSG --> API
-  API -- "JDBC (depends_on: healthy)" --> DB
-  DB --- VOL
-  API -- "@Scheduled 5 min" --> CEM
-```
+Fluxo: o gateway do cruzamento (Arduino UNO + Python) e o app Flutter chamam a API pelo IP público da VM; o NSG libera só 80 (API) e 22 (SSH). Na VM, o Docker Compose sobe `semaforo-api` e `semaforo-db` na rede `semaforo`; a API fala JDBC com `db:1521` e só inicia quando o banco está `healthy`; os dados do Oracle ficam no volume nomeado `semaforo-oradata`. A API sincroniza alertas do CEMADEN a cada 5 min.
 
 ### Modelo de dados (tabelas relacionadas)
 
@@ -64,7 +41,8 @@ erDiagram
 ├── .env.example          # variáveis de ambiente (copiar para .env)
 ├── deploy.sh             # Azure CLI: RG, VM, NSG, instala Docker e sobe o Compose
 ├── destroy.sh            # Azure CLI: exclui o grupo de recursos
-├── crud-demo.sh          # CRUD completo via curl
+├── crud-demo.sh          # CRUD completo via curl (CRUZAMENTO, LEITURA_SENSOR, ALERTA)
+├── docs/                 # arquitetura.drawio / .png / .svg
 ├── pom.xml
 └── src/                  # código-fonte da API Java
 ```
@@ -74,7 +52,13 @@ erDiagram
 ### 1. Pré-requisitos (máquina local)
 
 - [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli) e `az login` feito
-- `git`, `curl`, `tar`, `ssh`
+- `bash`, `git`, `curl`, `tar`, `ssh` (Linux/macOS; no Windows use **WSL** ou **Git Bash**)
+
+Região e tamanho da VM podem ser trocados se a assinatura não tiver cota (ex.: Azure for Students):
+
+```bash
+LOC=eastus SIZE=Standard_B2s ./deploy.sh
+```
 
 ### 2. Provisionar e subir tudo na Azure
 
@@ -110,14 +94,16 @@ cd /opt/semaforo
 
 | Evidência | Comando |
 |---|---|
-| Containers executando (background) | `docker compose ps` |
+| Docker e Compose instalados na VM | `docker --version` · `docker compose version` |
+| Containers executando (background, `-d`) | `docker compose ps` |
 | Logs | `docker compose logs api --tail 50` · `docker compose logs db --tail 20` |
-| Acesso ao container | `docker compose exec api sh` |
-| Usuário não-root | `docker compose exec api whoami` → `app` |
-| Estrutura de diretórios | `docker compose exec api sh -c 'pwd; ls -la'` → `/app/app.jar` · `ls -la /opt/semaforo` |
+| Acesso aos containers | `docker compose exec api sh` · `docker compose exec db bash` |
+| Usuário não-root | `docker compose exec api whoami` → `app` · `docker compose exec db whoami` → `oracle` |
+| Estrutura de diretórios | repositório (seção acima) · VM: `ls -la /opt/semaforo` · container: `docker compose exec api sh -c 'pwd; ls -la'` → `/app/app.jar` |
 | Volume nomeado | `docker volume ls` · `docker volume inspect semaforo_semaforo-oradata` |
 | Rede | `docker network inspect semaforo_semaforo` |
-| Variáveis de ambiente | `docker compose exec api env \| grep -E 'DB_\|PORT'` |
+| Variáveis de ambiente | `docker compose exec api env \| grep -E 'DB_\|PORT'` · `docker compose exec db env \| grep -E 'APP_USER\|ORACLE'` |
+| Portas | `docker compose port api 8080` · `docker compose port db 1521` |
 
 > O nome do volume e da rede recebe o prefixo da pasta (`semaforo_` em `/opt/semaforo`). Confira com `docker volume ls`.
 
@@ -129,23 +115,33 @@ Da sua máquina (ou da VM com `http://localhost`):
 ./crud-demo.sh http://$IP
 ```
 
-Faz login como ADMIN, cria um cruzamento (`POST 201`), registra uma leitura na tabela relacionada (`POST /cruzamentos/{id}/leituras`), lê (`GET`), atualiza (`PUT`), lista e exclui um registro temporário (`DELETE 204`, depois `GET 404`). A leitura acima do limite muda o modo do cruzamento para `ATENCAO`.
+Faz login como ADMIN e executa o CRUD nas **duas tabelas relacionadas a `CRUZAMENTO`**:
+
+- `CRUZAMENTO`: cria (`POST 201`), lê (`GET`), atualiza (`PUT`), lista e exclui um registro temporário (`DELETE 204`, depois `GET 404`);
+- `LEITURA_SENSOR` (FK `cruzamento_id`): registra uma leitura acima do limite, que muda o modo do cruzamento para `ATENCAO`;
+- `ALERTA` (FK `cruzamento_id`): cria, lê, atualiza e exclui um alerta temporário (`DELETE 204`, depois `GET 404`).
+
+Os registros principais ficam no banco para o SELECT.
 
 Swagger: `http://$IP/swagger-ui/index.html` · usuários de demonstração: `admin@semaforo.dev`, `operador@semaforo.dev`, `cidadao@semaforo.dev`, senha `Semaforo@2026`.
 
 ### 6. SELECT direto no banco
 
 ```bash
-docker compose exec db sqlplus semaforo/Semaforo#2026@//localhost/FREEPDB1
+source .env   # usa DB_USER/DB_PASSWORD do seu .env
+docker compose exec db sqlplus "$DB_USER/$DB_PASSWORD@//localhost/FREEPDB1"
 ```
 
 ```sql
 SET LINESIZE 200
 COLUMN nome FORMAT A40
+COLUMN titulo FORMAT A32
 SELECT c.id, c.nome, c.modo, l.nivel_agua_cm, l.registrada_em
   FROM cruzamento c JOIN leitura_sensor l ON l.cruzamento_id = c.id
  ORDER BY l.registrada_em DESC;
-SELECT * FROM leitura_sensor;
+SELECT c.id, c.nome, a.titulo, a.severidade, a.ativo
+  FROM alerta a JOIN cruzamento c ON c.id = a.cruzamento_id
+ ORDER BY a.id;
 ```
 
 ### 7. Persistência
@@ -153,7 +149,7 @@ SELECT * FROM leitura_sensor;
 ```bash
 docker compose down          # remove os containers, mantém o volume
 docker compose up -d
-docker compose exec db sqlplus -s semaforo/Semaforo#2026@//localhost/FREEPDB1 <<< "SELECT COUNT(*) FROM cruzamento;"
+docker compose exec db sqlplus -s "$DB_USER/$DB_PASSWORD@//localhost/FREEPDB1" <<< "SELECT COUNT(*) FROM cruzamento;"
 ```
 
 Os registros criados antes continuam lá (dados em `/opt/oracle/oradata`, volume nomeado).
@@ -183,6 +179,15 @@ docker compose up -d --build
 | `API_PORT` | host | porta publicada da API (padrão 80) |
 | `CEMADEN_ENABLED` | api | liga a sincronização agendada de alertas |
 
+## Uso de IA generativa
+
+| Ferramenta | Para quê |
+|---|---|
+| Claude (assistente de código) | revisão do Dockerfile/Compose, scripts Azure CLI, diagrama de arquitetura e README |
+
+Todo o conteúdo foi revisado e testado pelo grupo (deploy na Azure, CRUD e SELECT).
+
 ## Links
 
+- Repositório: https://github.com/theruansilva/semaforo-devops
 - Vídeo (YouTube, não listado): _adicionar_
