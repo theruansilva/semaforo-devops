@@ -1,0 +1,46 @@
+services:
+  db:
+    image: gvenzl/oracle-free:23-slim
+    container_name: semaforo-db
+    environment:
+      ORACLE_PASSWORD: ${ORACLE_PASSWORD:?defina ORACLE_PASSWORD no .env}
+      APP_USER: ${DB_USER:-semaforo}
+      APP_USER_PASSWORD: ${DB_PASSWORD:?defina DB_PASSWORD no .env}
+    volumes:
+      - semaforo-oradata:/opt/oracle/oradata
+    ports:
+      - "1521:1521"
+    networks: [semaforo]
+    healthcheck:
+      test: ["CMD", "healthcheck.sh"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 60s
+    restart: unless-stopped
+
+  api:
+    build: .
+    image: semaforo-api
+    container_name: semaforo-api
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_URL: jdbc:oracle:thin:@db:1521/FREEPDB1
+      DB_USER: ${DB_USER:-semaforo}
+      DB_PASSWORD: ${DB_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET:?defina JWT_SECRET no .env (32+ caracteres)}
+      CORS_ORIGINS: ${CORS_ORIGINS:-*}
+      CEMADEN_ENABLED: ${CEMADEN_ENABLED:-true}
+      JAVA_OPTS: -Xmx512m
+    ports:
+      - "${API_PORT:-80}:8080"
+    networks: [semaforo]
+    restart: unless-stopped
+
+volumes:
+  semaforo-oradata:
+
+networks:
+  semaforo:
