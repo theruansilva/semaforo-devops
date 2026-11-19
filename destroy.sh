@@ -10,7 +10,7 @@ set -euo pipefail
 RG="rg-semaforo-566719"
 
 echo "=============================================================================="
-echo " EXCLUSÃO DE RECURSOS NO MICROSOFT AZURE • SEMÁFORO INTELIGENTE"
+echo " EXCLUSÃO DE RECURSOS NO MICROSOFT AZURE • SINALIZE.AI"
 echo " Grupo de Recursos a excluir: $RG"
 echo "=============================================================================="
 

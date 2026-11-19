@@ -1,4 +1,4 @@
-# Semáforo Inteligente · DevOps Tools & Cloud Computing
+# Sinalize.Ai · DevOps Tools & Cloud Computing
 
 Global Solution 2026/2 · CitizenTech · Turma 2TDSPR
 

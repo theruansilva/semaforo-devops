@@ -2,7 +2,7 @@
 # ==============================================================================
 # FIAP 2026 • GLOBAL SOLUTION 2026/2 • CITIZENTECH
 # Disciplina: DevOps Tools & Cloud Computing
-# Semáforo Inteligente: provisionamento da VM Azure via CLI + API Java e
+# Sinalize.Ai: provisionamento da VM Azure via CLI + API Java e
 # Oracle Database em contêineres orquestrados pelo Docker Compose
 #
 # INTEGRANTES:
@@ -24,7 +24,7 @@ DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 clear 2>/dev/null || true
 echo "=============================================================================="
-echo " GLOBAL SOLUTION DEVOPS • SEMÁFORO INTELIGENTE (CITIZENTECH / EL NIÑO)"
+echo " GLOBAL SOLUTION DEVOPS • SINALIZE.AI (CITIZENTECH / EL NIÑO)"
 echo " VM Azure via CLI + Docker Compose: API Spring Boot + Oracle Database 23ai"
 echo " Integrantes: Ruan (566719), Julia Valerio (568275), Rhayssa Graziano (567549)"
 echo "=============================================================================="
@@ -98,7 +98,7 @@ for _ in $(seq 60); do
 done
 
 echo -e "\n=============================================================================="
-echo " SEMÁFORO INTELIGENTE EM EXECUÇÃO NA NUVEM MICROSOFT AZURE!"
+echo " SINALIZE.AI EM EXECUÇÃO NA NUVEM MICROSOFT AZURE!"
 echo "=============================================================================="
 echo " IP Público da VM:        http://$IP"
 echo " Documentação Swagger UI: http://$IP/swagger-ui/index.html"

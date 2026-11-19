@@ -13,7 +13,7 @@ SENHA="${SENHA_DEMO:-Semaforo@2026}"
 j() { curl -s -H "Content-Type: application/json" -H "Authorization: Bearer $TOKEN" "$@"; echo; }
 
 echo "=============================================================================="
-echo " DEMONSTRAÇÃO DO CRUD • SEMÁFORO INTELIGENTE"
+echo " DEMONSTRAÇÃO DO CRUD • SINALIZE.AI"
 echo " API: $API"
 echo "=============================================================================="
 
