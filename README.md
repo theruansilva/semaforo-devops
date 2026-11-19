@@ -190,4 +190,4 @@ Todo o conteúdo foi revisado e testado pelo grupo (deploy na Azure, CRUD e SELE
 ## Links
 
 - Repositório: https://github.com/theruansilva/semaforo-devops
-- Vídeo (YouTube, não listado): _adicionar_
+- Vídeo (YouTube, não listado): https://youtu.be/EZt22HhqWl4
